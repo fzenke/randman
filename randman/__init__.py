@@ -166,7 +166,7 @@ def main():
     # plot_manifolds()
     filename = "randman"
     dataset = make_classification_dataset(2, dim_manifold=1, dim_embedding_space=3, alpha=2.0, n_samples_per_class=5000, filename=filename)
-    write_to_file(dataset, filename)
+    # write_to_file(dataset, filename)
     run_linear_SVC(dataset)
 
     foo = plot_dataset(dataset, plot3d=True)
