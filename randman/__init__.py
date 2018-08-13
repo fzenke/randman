@@ -44,7 +44,7 @@ def random_manifold(x, dim_embedding_space, alpha=2.0):
 
 
 
-def make_classification_dataset( n_classes=2, filename="randman", n_samples_per_class=1000, alpha=2.0, dim_manifold=1, dim_embedding_space=2 ):
+def make_classification_dataset( n_classes=2, n_samples_per_class=1000, alpha=2.0, dim_manifold=1, dim_embedding_space=2 ):
 
     print("Generating random manifolds")
     manifold_points = np.random.rand(n_samples_per_class, dim_manifold)
@@ -140,7 +140,7 @@ def write_gnuplot_file(dataset, filename):
     fp.close()
 
 
-def run_linear_SVC(dataset):
+def compute_linear_SVC_accuracy(dataset):
     X,Y = dataset
 
     print("Splitting into training set and held out data")
@@ -150,31 +150,30 @@ def run_linear_SVC(dataset):
     y_train = Y[:n_data//4*3]
     y_test  = Y[n_data//4*3:]
 
-    print("Computing linear SCV error")
     train = (x_train, y_train) 
     test  = (x_test, y_test)
     lin_svc = svm.LinearSVC(C=1.0).fit(train[0], train[1])
     pred = lin_svc.predict( test[0] )
     acc = np.mean(pred==test[1])
-    print("Linear SVC training accuracy %f%%"%(100*acc))
     return acc
 
 
 
 def main():
-    filename = "randman"
-    dataset = make_classification_dataset(2, dim_manifold=1, dim_embedding_space=3, alpha=1.0, n_samples_per_class=5000, filename=filename)
+    dataset = make_classification_dataset(2, dim_manifold=1, dim_embedding_space=3, alpha=1.0, n_samples_per_class=5000)
 
-    # print("Writing to zipped pickle...")
-    # write_to_zipfile(dataset, filename)
-    # print("Writing to ASCII files...")
-    # write_gnuplot_file(dataset, filename)
-    
-    run_linear_SVC(dataset)
+    print("Computing linear SCV error")
+    acc = compute_linear_SVC_accuracy(dataset)
+    print("Linear SVC training accuracy %f%%"%(100*acc))
 
     foo = plot_dataset(dataset, plot3d=True)
     plt.show()
 
+    # filename = "randman"
+    # print("Writing to zipped pickle...")
+    # write_to_zipfile(dataset, filename)
+    # print("Writing to ASCII files...")
+    # write_gnuplot_file(dataset, filename)
 
 
 if __name__ == '__main__':
