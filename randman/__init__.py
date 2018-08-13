@@ -42,13 +42,6 @@ def random_manifold(x, dim_embedding_space, alpha=2.0):
     return data
 
 
-def write_gnuplot_file( filename, data, labels ):
-    fp = open("%s.dat"%filename,'w')
-    for i,d in enumerate(data):
-        for val in d:
-            fp.write("%f "%val)
-        fp.write("%i\n"%labels[i])
-    fp.close()
 
 
 def make_classification_dataset( n_classes=2, filename="randman", n_samples_per_class=1000, alpha=2.0, dim_manifold=1, dim_embedding_space=2 ):
@@ -90,8 +83,6 @@ def make_classification_dataset( n_classes=2, filename="randman", n_samples_per_
     dataset = (X,Y)
 
 
-    print("Writing to ASCII files...")
-    write_gnuplot_file(filename, X, Y)
 
     return dataset
 
@@ -124,14 +115,14 @@ def plot_dataset(dataset, plot3d=False):
     return ret
 
 
-def write_to_file(dataset, filename):
+def write_to_zipfile(dataset, filename):
     print("Pickling...")
     fp = gzip.open("%s.pkl.gz"%filename,'wb')
     pickle.dump(dataset, fp)
     fp.close()
 
 
-def load_from_file(filename):
+def load_from_zipfile(filename):
     print("Loading data set...")
     fp = gzip.open("%s.pkl.gz"%filename,'r')
     dataset = pickle.load(fp)
@@ -139,34 +130,46 @@ def load_from_file(filename):
     return dataset
 
 
+def write_gnuplot_file(dataset, filename):
+    data, labels = dataset
+    fp = open("%s.dat"%filename,'w')
+    for i,d in enumerate(data):
+        for val in d:
+            fp.write("%f "%val)
+        fp.write("%i\n"%labels[i])
+    fp.close()
+
+
 def run_linear_SVC(dataset):
     X,Y = dataset
 
     print("Splitting into training set and held out data")
     n_data  = len(X)
-    x_train = X[:n_data//5*3]
-    x_valid = X[n_data//5*3:n_data//5*4]
-    x_test  = X[n_data//5*4:]
-    y_train = Y[:n_data//5*3]
-    y_valid = Y[n_data//5*3:n_data//5*4]
-    y_test  = Y[n_data//5*4:]
+    x_train = X[:n_data//4*3]
+    x_test  = X[n_data//4*3:]
+    y_train = Y[:n_data//4*3]
+    y_test  = Y[n_data//4*3:]
 
     print("Computing linear SCV error")
     train = (x_train, y_train) 
-    valid = (x_valid, y_valid)
     test  = (x_test, y_test)
     lin_svc = svm.LinearSVC(C=1.0).fit(train[0], train[1])
     pred = lin_svc.predict( test[0] )
-    err = np.mean(pred!=test[1])
-    print("Linear SVC training error %f%%"%(100*err))
+    acc = np.mean(pred==test[1])
+    print("Linear SVC training accuracy %f%%"%(100*acc))
+    return acc
 
 
 
 def main():
-    # plot_manifolds()
     filename = "randman"
-    dataset = make_classification_dataset(2, dim_manifold=1, dim_embedding_space=3, alpha=2.0, n_samples_per_class=5000, filename=filename)
-    # write_to_file(dataset, filename)
+    dataset = make_classification_dataset(2, dim_manifold=1, dim_embedding_space=3, alpha=1.0, n_samples_per_class=5000, filename=filename)
+
+    # print("Writing to zipped pickle...")
+    # write_to_zipfile(dataset, filename)
+    # print("Writing to ASCII files...")
+    # write_gnuplot_file(dataset, filename)
+    
     run_linear_SVC(dataset)
 
     foo = plot_dataset(dataset, plot3d=True)
