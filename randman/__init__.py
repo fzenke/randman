@@ -143,15 +143,16 @@ def write_gnuplot_file(dataset, filename):
 def compute_linear_SVC_accuracy(dataset):
     X,Y = dataset
 
-    print("Splitting into training set and held out data")
+    # Splitting into training set and held out data
     n_data  = len(X)
     x_train = X[:n_data//4*3]
     x_test  = X[n_data//4*3:]
     y_train = Y[:n_data//4*3]
     y_test  = Y[n_data//4*3:]
-
     train = (x_train, y_train) 
     test  = (x_test, y_test)
+
+    # Fit SVC and evaluate on test set
     lin_svc = svm.LinearSVC(C=1.0).fit(train[0], train[1])
     pred = lin_svc.predict( test[0] )
     acc = np.mean(pred==test[1])
