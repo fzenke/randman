@@ -11,8 +11,8 @@ import torch
 from sklearn import svm
 
 
-class Randman:
-    """ Randman objects hold the parameters for a smooth random manifold from which datapoints can be sampled. """
+class NumpyRandman:
+    """ Randman (numpy version) objects hold the parameters for a smooth random manifold from which datapoints can be sampled. """
     
     def __init__(self, embedding_dim, manifold_dim, alpha=2, use_bias=False, prec=1e-3):
         """ Initializes a randman object.
@@ -67,7 +67,7 @@ class Randman:
     
     
 class TorchRandman:
-    """ TorchRandman objects hold the parameters for a smooth random manifold from which datapoints can be sampled. """
+    """ Randman (torch version) objects hold the parameters for a smooth random manifold from which datapoints can be sampled. """
     
     def __init__(self, embedding_dim, manifold_dim, alpha=2, prec=1e-3, use_bias=False, dtype=torch.float32, device=None):
         """ Initializes a randman object.
@@ -123,6 +123,8 @@ class TorchRandman:
         return x,y
 
 
+# Defines class alias for the default backend
+Randman = TorchRandman
 
 
 
@@ -239,7 +241,7 @@ def compute_linear_SVC_accuracy(dataset):
 
 
 def main():
-    dataset = make_classification_dataset(2, dim_manifold=1, dim_embedding_space=3, alpha=1.0, n_samples_per_class=1000)
+    dataset = make_classification_dataset(2, dim_manifold=2, dim_embedding_space=3, alpha=2.0, n_samples_per_class=1000)
 
     print("Computing linear SCV error")
     acc = compute_linear_SVC_accuracy(dataset)
