@@ -99,20 +99,22 @@ class TorchRandman:
             self.params[:,:,0,0] = 0
         
     def eval_random_function_1d(self, x, theta):       
-        tmp = torch.zeros(len(x),device=self.device)
-        s = 1.0/((torch.arange(self.f_cutoff,device=self.device)+1)**self.alpha)
+        tmp = torch.zeros(len(x),dtype=self.dtype,device=self.device)
+        s = 1.0/((torch.arange(self.f_cutoff,dtype=self.dtype,device=self.device)+1)**self.alpha)
         for i in range(self.f_cutoff):
             tmp += theta[0,i]*s[i]*torch.sin( 2*np.pi*(i*x*theta[1,i] + theta[2,i]) )
         return tmp
 
     def eval_random_function(self, x, params):
-        tmp = torch.ones(len(x),device=self.device)
+        tmp = torch.ones(len(x),dtype=self.dtype,device=self.device)
         for d in range(self.dim_manifold):
             tmp *= self.eval_random_function_1d(x[:,d], params[d])
         return tmp
     
     def eval_manifold(self, x):
-        tmp = torch.zeros((x.shape[0],self.dim_embedding))
+        if isinstance(x,np.ndarray):
+            x = torch.tensor(x,dtype=self.dtype,device=self.device)
+        tmp = torch.zeros((x.shape[0],self.dim_embedding),dtype=self.dtype,device=self.device)
         for i in range(self.dim_embedding):
             tmp[:,i] = self.eval_random_function(x, self.params[i])
         return tmp
