@@ -1,45 +1,127 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 
 import numpy as np
 import pickle
 import gzip
 import itertools
 
-import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
+import torch
+
 
 from sklearn import svm
 
 
+class Randman:
+    """ Randman objects hold the parameters for a smooth random manifold from which datapoints can be sampled. """
+    
+    def __init__(self, embedding_dim, manifold_dim, alpha=2, use_bias=False, prec=1e-3):
+        """ Initializes a randman object.
+        
+        Args
+        ----
+        embedding_dim : The embedding space dimension
+        manifold_dim : The manifold dimension
+        alpha : The power spectrum fall-off exponenent. Determines the smoothenss of the manifold (default 2)
+        use_bias: If True, manifolds are placed at random offset coordinates within a [0,1] simplex.
+        prec: The precision paramter to determine the maximum frequency cutoff (default 1e-3)
+        """
+        self.alpha = alpha
+        self.use_bias = use_bias
+        self.dim_embedding = embedding_dim
+        self.dim_manifold = manifold_dim
+        self.f_cutoff = int(np.ceil(np.power(prec,-1/self.alpha)))
+        self.params_per_1d_fun = 3
+        self.init_random()
+           
+    def init_random(self):
+        self.params = np.random.uniform(low=0, high=1, size=(self.dim_embedding, self.dim_manifold, self.params_per_1d_fun, self.f_cutoff))
+        if not self.use_bias:
+            self.params[:,:,0,0] = 0
+        
+    def eval_random_function_1d(self, x, theta):
+        tmp = np.zeros(len(x))
+        s = 1.0/((np.arange(self.f_cutoff)+1)**self.alpha)
+        for i in range(self.f_cutoff):
+            tmp += theta[0,i]*s[i]*np.sin( 2*np.pi*(i*x*theta[1,i] + theta[2,i]) )
+        return tmp
 
+    def eval_random_function(self, x, params):
+        tmp = np.ones(len(x))
+        for d in range(self.dim_manifold):
+            tmp *= self.eval_random_function_1d(x[:,d], params[d])
+        return tmp
+    
+    def eval_manifold(self, x):
+        dims = []
+        for i in range(self.dim_embedding):
+            dims.append(self.eval_random_function(x, self.params[i]))
+        data = np.array( dims ).T
+        return data
+    
+    def get_random_manifold_samples(self, nb_samples):
+        x = np.random.rand(nb_samples,self.dim_manifold)
+        y = self.eval_manifold(x)
+        return x,y
 
-def random_function_1d(x, alpha=2.0, bias_terms=False, freq_cutoff_=128):
-    A = np.random.uniform(low=0, high=1, size=freq_cutoff_)
-    B = np.random.uniform(low=0, high=1, size=freq_cutoff_)
-    C = np.random.uniform(low=0, high=1, size=freq_cutoff_)
-    if not bias_terms:
-        A[0] = 0
-    tmp = np.zeros(len(x))
+    
+    
+    
+class TorchRandman:
+    """ TorchRandman objects hold the parameters for a smooth random manifold from which datapoints can be sampled. """
+    
+    def __init__(self, embedding_dim, manifold_dim, alpha=2, prec=1e-3, use_bias=False, dtype=torch.float32, device=None):
+        """ Initializes a randman object.
+        
+        Args
+        ----
+        embedding_dim : The embedding space dimension
+        manifold_dim : The manifold dimension
+        alpha : The power spectrum fall-off exponenent. Determines the smoothenss of the manifold (default 2)
+        use_bias: If True, manifolds are placed at random offset coordinates within a [0,1] simplex.
+        prec: The precision paramter to determine the maximum frequency cutoff (default 1e-3)
+        """
+        self.alpha = alpha
+        self.use_bias = use_bias
+        self.dim_embedding = embedding_dim
+        self.dim_manifold = manifold_dim
+        self.f_cutoff = int(np.ceil(np.power(prec,-1/self.alpha)))
+        self.params_per_1d_fun = 3
+        self.dtype=dtype
+        if device is None:
+            self.device=torch.device("cpu")
+        else:
+            self.device=device
+        self.init_random()
+           
+    def init_random(self):
+        self.params = torch.rand(self.dim_embedding, self.dim_manifold, self.params_per_1d_fun, self.f_cutoff, dtype=self.dtype, device=self.device)
+        if not self.use_bias:
+            self.params[:,:,0,0] = 0
+        
+    def eval_random_function_1d(self, x, theta):       
+        tmp = torch.zeros(len(x),device=self.device)
+        s = 1.0/((torch.arange(self.f_cutoff,device=self.device)+1)**self.alpha)
+        for i in range(self.f_cutoff):
+            tmp += theta[0,i]*s[i]*torch.sin( 2*np.pi*(i*x*theta[1,i] + theta[2,i]) )
+        return tmp
 
-    for i in range(freq_cutoff_):
-        S = 1.0/(i+1)**alpha # pink noise spectrum
-        tmp += A[i]*S*np.sin( 2*np.pi*(i*x*B[i] + C[i]) ) 
-    return tmp
+    def eval_random_function(self, x, params):
+        tmp = torch.ones(len(x),device=self.device)
+        for d in range(self.dim_manifold):
+            tmp *= self.eval_random_function_1d(x[:,d], params[d])
+        return tmp
+    
+    def eval_manifold(self, x):
+        tmp = torch.zeros((x.shape[0],self.dim_embedding))
+        for i in range(self.dim_embedding):
+            tmp[:,i] = self.eval_random_function(x, self.params[i])
+        return tmp
+    
+    def get_random_manifold_samples(self, nb_samples):
+        x = torch.rand(nb_samples,self.dim_manifold,dtype=self.dtype,device=self.device)
+        y = self.eval_manifold(x)
+        return x,y
 
-
-def random_function(x, alpha=2.0):
-    tmp = np.ones(len(x))
-    for d in range(x.shape[1]):
-        tmp *= random_function_1d(x[:,d], alpha=alpha)
-    return tmp
-
-
-def random_manifold(x, dim_embedding_space, alpha=2.0):
-    dims = [] 
-    for i in range(dim_embedding_space):
-        dims.append(random_function(x, alpha))
-    data = np.array( dims ).T
-    return data
 
 
 
@@ -47,17 +129,13 @@ def random_manifold(x, dim_embedding_space, alpha=2.0):
 def make_classification_dataset( n_classes=2, n_samples_per_class=1000, alpha=2.0, dim_manifold=1, dim_embedding_space=2 ):
 
     print("Generating random manifolds")
-    manifold_points = np.random.rand(n_samples_per_class, dim_manifold)
-    # manifold_points = np.tile(np.linspace(0, np.pi, n_samples_per_class),dim_manifold).reshape(n_samples_per_class, dim_manifold)
-    
 
     data = []
     labels = []
     for i in range(n_classes):
-        # Add bias input
-        pure = random_manifold(manifold_points, dim_embedding_space, alpha)
-        # tmp = (pure-np.min(pure))/(np.max(pure)-np.min(pure))
-        data.append( pure )
+        randman = Randman(dim_embedding_space, dim_manifold, alpha=alpha)
+        _,tmp = randman.get_random_manifold_samples(n_samples_per_class)
+        data.append( tmp )
         labels.append( i*np.ones(n_samples_per_class) )
 
     
@@ -79,15 +157,15 @@ def make_classification_dataset( n_classes=2, n_samples_per_class=1000, alpha=2.
     # X = np.hstack((X,np.ones((len(X),1))))
     # print X.shape
 
-
     dataset = (X,Y)
-
-
 
     return dataset
 
 
 def plot_dataset(dataset, plot3d=False):
+    import matplotlib.pyplot as plt
+    from mpl_toolkits.mplot3d import Axes3D
+
     data, labels = dataset
 
     print("Plotting manifolds")
@@ -112,19 +190,19 @@ def plot_dataset(dataset, plot3d=False):
         else:
             ret = ax.scatter( data[idx,0], data[idx,1], s=0.5, color=next(colors) )
 
-    return ret
+    plt.show()
 
 
 def write_to_zipfile(dataset, filename):
     print("Pickling...")
-    fp = gzip.open("%s.pkl.gz"%filename,'wb')
+    fp = gzip.open("%s"%filename,'wb')
     pickle.dump(dataset, fp)
     fp.close()
 
 
 def load_from_zipfile(filename):
     print("Loading data set...")
-    fp = gzip.open("%s.pkl.gz"%filename,'r')
+    fp = gzip.open("%s"%filename,'r')
     dataset = pickle.load(fp)
     fp.close()
     return dataset
@@ -161,14 +239,13 @@ def compute_linear_SVC_accuracy(dataset):
 
 
 def main():
-    dataset = make_classification_dataset(2, dim_manifold=1, dim_embedding_space=3, alpha=1.0, n_samples_per_class=5000)
+    dataset = make_classification_dataset(2, dim_manifold=1, dim_embedding_space=3, alpha=1.0, n_samples_per_class=1000)
 
     print("Computing linear SCV error")
     acc = compute_linear_SVC_accuracy(dataset)
     print("Linear SVC training accuracy %f%%"%(100*acc))
 
     foo = plot_dataset(dataset, plot3d=True)
-    plt.show()
 
     # filename = "randman"
     # print("Writing to zipped pickle...")
