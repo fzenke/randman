@@ -14,7 +14,7 @@ from sklearn import svm
 class NumpyRandman:
     """ Randman (numpy version) objects hold the parameters for a smooth random manifold from which datapoints can be sampled. """
     
-    def __init__(self, embedding_dim, manifold_dim, alpha=2, use_bias=False, prec=1e-3):
+    def __init__(self, embedding_dim, manifold_dim, alpha=2, use_bias=False, prec=1e-3, max_f_cutoff=1000):
         """ Initializes a randman object.
         
         Args
@@ -29,7 +29,7 @@ class NumpyRandman:
         self.use_bias = use_bias
         self.dim_embedding = embedding_dim
         self.dim_manifold = manifold_dim
-        self.f_cutoff = int(np.ceil(np.power(prec,-1/self.alpha)))
+        self.f_cutoff = int(np.min((np.ceil(np.power(prec,-1/self.alpha)),max_f_cutoff)))
         self.params_per_1d_fun = 3
         self.init_random()
            
@@ -69,7 +69,7 @@ class NumpyRandman:
 class TorchRandman:
     """ Randman (torch version) objects hold the parameters for a smooth random manifold from which datapoints can be sampled. """
     
-    def __init__(self, embedding_dim, manifold_dim, alpha=2, prec=1e-3, use_bias=False, dtype=torch.float32, device=None):
+    def __init__(self, embedding_dim, manifold_dim, alpha=2, beta=0, prec=1e-3, max_f_cutoff=1000, use_bias=False, seed=None, dtype=torch.float32, device=None):
         """ Initializes a randman object.
         
         Args
@@ -81,26 +81,44 @@ class TorchRandman:
         prec: The precision paramter to determine the maximum frequency cutoff (default 1e-3)
         """
         self.alpha = alpha
+        self.beta = beta
         self.use_bias = use_bias
         self.dim_embedding = embedding_dim
         self.dim_manifold = manifold_dim
-        self.f_cutoff = int(np.ceil(np.power(prec,-1/self.alpha)))
+        self.f_cutoff = int(np.min((np.ceil(np.power(prec,-1/self.alpha)),max_f_cutoff)))
         self.params_per_1d_fun = 3
         self.dtype=dtype
+        
         if device is None:
             self.device=torch.device("cpu")
         else:
             self.device=device
+        
+        if seed is not None:
+            torch.random.manual_seed(seed)
         self.init_random()
+        self.init_spect(self.alpha, self.beta)
            
     def init_random(self):
         self.params = torch.rand(self.dim_embedding, self.dim_manifold, self.params_per_1d_fun, self.f_cutoff, dtype=self.dtype, device=self.device)
         if not self.use_bias:
             self.params[:,:,0,0] = 0
+
+    def init_spect(self, alpha=2.0, res=0, ):
+        """ Sets up power spectrum modulation 
+        
+        Args
+        ----
+        alpha : Power law decay exponent of power spectrum
+        res : Peak value of power spectrum.
+        """
+        r = (torch.arange(self.f_cutoff,dtype=self.dtype,device=self.device)+1)
+        s = 1.0/(torch.abs(r-res)**alpha + 1.0)
+        self.spect = s
         
     def eval_random_function_1d(self, x, theta):       
         tmp = torch.zeros(len(x),dtype=self.dtype,device=self.device)
-        s = 1.0/((torch.arange(self.f_cutoff,dtype=self.dtype,device=self.device)+1)**self.alpha)
+        s = self.spect
         for i in range(self.f_cutoff):
             tmp += theta[0,i]*s[i]*torch.sin( 2*np.pi*(i*x*theta[1,i] + theta[2,i]) )
         return tmp
@@ -130,17 +148,17 @@ Randman = TorchRandman
 
 
 
-def make_classification_dataset( n_classes=2, n_samples_per_class=1000, alpha=2.0, dim_manifold=1, dim_embedding_space=2 ):
+def make_classification_dataset( nb_classes=2, nb_samples_per_class=1000, alpha=2.0, dim_manifold=1, dim_embedding_space=2 ):
 
     print("Generating random manifolds")
 
     data = []
     labels = []
-    for i in range(n_classes):
+    for i in range(nb_classes):
         randman = Randman(dim_embedding_space, dim_manifold, alpha=alpha)
-        _,tmp = randman.get_random_manifold_samples(n_samples_per_class)
+        _,tmp = randman.get_random_manifold_samples(nb_samples_per_class)
         data.append( tmp )
-        labels.append( i*np.ones(n_samples_per_class) )
+        labels.append( i*np.ones(nb_samples_per_class) )
 
     
     print("Shuffling dataset")
@@ -150,16 +168,6 @@ def make_classification_dataset( n_classes=2, n_samples_per_class=1000, alpha=2.
     np.random.shuffle(idx)
     X = X[idx]
     Y = Y[idx]
-
-    print("Standardizing the data")
-    # X -= X.mean(0)
-    # X /= (X.std(0)+1e-9)
-    X -= X.min(0)
-    X /= (X.max(0))
-
-    # print("Add fixed input")
-    # X = np.hstack((X,np.ones((len(X),1))))
-    # print X.shape
 
     dataset = (X,Y)
 
@@ -243,7 +251,7 @@ def compute_linear_SVC_accuracy(dataset):
 
 
 def main():
-    dataset = make_classification_dataset(2, dim_manifold=2, dim_embedding_space=3, alpha=2.0, n_samples_per_class=1000)
+    dataset = make_classification_dataset(2, dim_manifold=2, dim_embedding_space=3, alpha=2.0, nb_samples_per_class=1000)
 
     print("Computing linear SCV error")
     acc = compute_linear_SVC_accuracy(dataset)
