@@ -78,6 +78,7 @@ class TorchRandman:
         manifold_dim : The manifold dimension
         alpha : The power spectrum fall-off exponenent. Determines the smoothenss of the manifold (default 2)
         use_bias: If True, manifolds are placed at random offset coordinates within a [0,1] simplex.
+        seed: This seed is used to init the *global* torch.random random number generator. 
         prec: The precision paramter to determine the maximum frequency cutoff (default 1e-3)
         """
         self.alpha = alpha
@@ -96,6 +97,7 @@ class TorchRandman:
         
         if seed is not None:
             torch.random.manual_seed(seed)
+
         self.init_random()
         self.init_spect(self.alpha, self.beta)
            
