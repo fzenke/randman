@@ -8,7 +8,6 @@ import itertools
 import torch
 
 
-from sklearn import svm
 
 
 class NumpyRandman:
@@ -233,6 +232,8 @@ def write_gnuplot_file(dataset, filename):
 
 
 def compute_linear_SVC_accuracy(dataset):
+    from sklearn import svm
+
     X,Y = dataset
 
     # Splitting into training set and held out data
