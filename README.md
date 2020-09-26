@@ -2,6 +2,7 @@
 
 Code to generate smooth random manifold datasets
 
+![Example manifolds](https://github.com/fzenke/randman/blob/master/figs/randman_examples.png "Example manifolds")
 
 If you find this code useful and use it for some of your work, please cite:
 
