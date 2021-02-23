@@ -6,19 +6,22 @@ Code to generate smooth random manifold datasets
 
 If you find this code useful and use it for some of your work, please cite:
 
-Zenke, F., and Vogels, T.P. (2020). The remarkable robustness of surrogate gradient learning for instilling complex function in spiking neural networks. BioRxiv 2020.06.29.176925.
+Zenke, F., and Vogels, T.P. (2021). The Remarkable Robustness of Surrogate Gradient Learning for Instilling Complex Function in Spiking Neural Networks. Neural Computation 1–27.
 
-url: https://www.biorxiv.org/content/10.1101/2020.06.29.176925v1
+url: https://doi.org/10.1162/neco_a_01367
 
 Bibtex:
 ```
-@article{zenke_remarkable_2020,
-	title = {The remarkable robustness of surrogate gradient learning for instilling complex function in spiking neural networks},
-	url = {https://www.biorxiv.org/content/10.1101/2020.06.29.176925v1},
-	doi = {10.1101/2020.06.29.176925},
-	journal = {bioRxiv},
+@article{zenke_vogels_2021,
+	title = {The {Remarkable} {Robustness} of {Surrogate} {Gradient} {Learning} for {Instilling} {Complex} {Function} in {Spiking} {Neural} {Networks}},
+	issn = {0899-7667},
+	url = {https://doi.org/10.1162/neco_a_01367},
+	doi = {10.1162/neco_a_01367},
+	journal = {Neural Computation},
 	author = {Zenke, Friedemann and Vogels, Tim P.},
-	year = {2020},
-	pages = {2020.06.29.176925},
+	month = jan,
+	year = {2021},
+	note = {Publisher: MIT Press},
+	pages = {1--27},
 }
 ```
