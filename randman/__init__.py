@@ -5,8 +5,8 @@ import pickle
 import gzip
 import itertools
 
-from randman.numpy_randman import NumpyRandman
-from randman.jax_randman import JaxRandman
+# from randman.numpy_randman import NumpyRandman
+# from randman.jax_randman import JaxRandman
 from randman.torch_randman import TorchRandman
 
 
